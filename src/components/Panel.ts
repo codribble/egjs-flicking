@@ -6,7 +6,7 @@
 import Viewport from "./Viewport";
 import { OriginalStyle, FlickingPanel, ElementLike, DestroyOption, BoundingBox } from "../types";
 import { DEFAULT_PANEL_CSS, EVENTS } from "../consts";
-import { addClass, applyCSS, parseArithmeticExpression, parseElement, getProgress, restoreStyle, hasClass } from "../utils";
+import { addClass, applyCSS, parseArithmeticExpression, parseElement, getProgress, restoreStyle, hasClass, getBbox } from "../utils";
 
 class Panel implements FlickingPanel {
   public viewport: Viewport;
@@ -300,6 +300,7 @@ class Panel implements FlickingPanel {
     const state = this.state;
     const viewport = this.viewport;
     const element = this.element;
+    const options = viewport.options;
 
     if (!element) {
       state.cachedBbox = {
@@ -315,13 +316,8 @@ class Panel implements FlickingPanel {
         cameraElement.appendChild(element);
         viewport.addVisiblePanel(this);
       }
-      const bbox = element.getBoundingClientRect();
-      state.cachedBbox = {
-        x: bbox.left,
-        y: bbox.top,
-        width: bbox.width,
-        height: bbox.height,
-      };
+      state.cachedBbox = getBbox(element, options.useOffset);
+
       if (!wasVisible && viewport.options.renderExternal) {
         cameraElement.removeChild(element);
       }

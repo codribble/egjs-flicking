@@ -46,9 +46,10 @@ export type ElementLike = string | HTMLElement;
  * @property - The reference position of the anchor in panels, which can be hanged by viewport hanger.<br>It should be provided in px or % value of panel size.<br>You can combinate those values with plus/minus sign.<br>ex) "50", "100px", "0%", "25% + 100px"<ko>패널 내부의 앵커의 위치. 뷰포트의 행어와 연계하여 패널이 화면 내에서 멈추는 지점을 설정할 수 있다.<br>px값이나, 패널의 크기 대비 %값을 사용할 수 있고, 이를 + 혹은 - 기호로 연계하여 사용할 수도 있다.<br>예) "50", "100px", "0%", "25% + 100px"</ko>
  * @property - Space value between panels. Should be given in number.(px)<ko>패널간에 부여할 간격의 크기를 나타내는 숫자.(px)</ko>
  * @property - Movement style by user input. (ex: snap, freeScroll)<ko>사용자 입력에 의한 이동 방식.(ex: snap, freeScroll)</ko>
- * @property - Whether to render visible panels only. This can dramatically increase performance when there're many panels.<ko>보이는 패널만 렌더링할지 여부를 설정한다. 패널이 많을 경우에 퍼포먼스를 크게 향상시킬 수 있다.</ko>
+ * @property - Whether to use `offsetWidth`/`offsetHeight` instead of `getBoundingClientRect` for panel/viewport size calculation.<br/>You can use this option to calculate the original panel size when CSS transform is applied to viewport or panel.<br/>⚠️ If panel size is not fixed integer value, there can be a 1px gap between panels.<ko>패널과 뷰포트의 크기를 계산할 때 `offsetWidth`/`offsetHeight`를 `getBoundingClientRect` 대신 사용할지 여부.<br/>패널이나 뷰포트에 CSS transform이 설정되어 있을 때 원래 패널 크기를 계산하려면 활성화할 수 있다.<br/>⚠️ 패널의 크기가 정수로 고정되어있지 않다면 패널 사이에 1px의 공간이 생길 수 있다.</ko>
  * @property - This option indicates whether all panels have the same size(true) of first panel, or it can hold a list of class names that determines panel size.<br/>Enabling this option can increase performance while recalculating panel size.<ko>모든 패널의 크기가 동일한지(true), 혹은 패널 크기를 결정하는 패널 클래스들의 리스트.<br/>이 옵션을 설정하면 패널 크기 재설정시에 성능을 높일 수 있다.</ko>
  * @property - Whether all panels have a constant size that won't be changed after resize. Enabling this option can increase performance while recalculating panel size.<ko>모든 패널의 크기가 불변인지의 여부. 이 옵션을 'true'로 설정하면 패널 크기 재설정시에 성능을 높일 수 있다.</ko>
+ * @property - Whether to render visible panels only. This can dramatically increase performance when there're many panels.<ko>보이는 패널만 렌더링할지 여부를 설정한다. 패널이 많을 경우에 퍼포먼스를 크게 향상시킬 수 있다.</ko>
  * @property - Whether to use external rendering. It will delegate DOM manipulation and can synchronize the rendered state by calling `sync()` method. You can use this option to use in frameworks like React, Vue, Angular, which has its states and rendering methods.<ko>외부 렌더링을 사용할 지의 여부. 이 옵션을 사용시 렌더링을 외부에 위임할 수 있고, `sync()`를 호출하여 그 상태를 동기화할 수 있다. 이 옵션을 사용하여, React, Vue, Angular 등 자체적인 상태와 렌더링 방법을 갖는 프레임워크에 대응할 수 있다.</ko>
  * @property - Whether to collect statistics on how you are using `Flicking`. These statistical data do not contain any personal information and are used only as a basis for the development of a user-friendly product.<ko>어떻게 `Flicking`을 사용하고 있는지에 대한 통계 수집 여부를 나타낸다. 이 통계자료는 개인정보를 포함하고 있지 않으며 오직 사용자 친화적인 제품으로 발전시키기 위한 근거자료로서 활용한다.</ko>
  */
@@ -76,6 +77,7 @@ export interface FlickingOptions {
   anchor: number | string;
   gap: number;
   moveType: MoveTypeOption;
+  useOffset: boolean;
   isEqualSize: boolean | string[];
   isConstantSize: boolean;
   renderOnlyVisible: boolean;
@@ -400,10 +402,18 @@ export interface SelectEvent {
  * @property - Direction of panel is needed from reference panel. `null` if no panel exists.<ko>기준 패널로부터 패널이 필요한 방향. 패널이 하나도 없을 경우 `null`이다.</ko>
  * @property - Original event emitted from {@link https://naver.github.io/egjs-axes/release/latest/doc/ Axes} instance.<ko>내부의 {@link https://naver.github.io/egjs-axes/release/latest/doc Axes} 인스턴스로부터 발생된 원본 이벤트.</ko>
  * @property - Flicking instance that triggered event.<ko>이벤트를 발생시킨 Flicking의 인스턴스</ko>
+ * @property - A helper function that can be used to fill the empty panel area without consideration of direction.<ko>방향을 고려하지 않고 패널을 손쉽게 추가할 수 있게 해주는 헬퍼 함수.</ko>
  * @property range - Range of indexes that is emtpy.<ko>패널이 존재하지 않는 인덱스의 범위.</ko>
  * @property {number} [range.min] - Minimum index of panels needed.<ko>필요한 패널들의 최소 인덱스.</ko>.
  * @property {number} [range.max] - Maximum index of panels needed.<ko>필요한 패널들의 최대 인덱스.</ko>.
  * @property {number} [range.length] - How many panels are needed to fill empty spaces.<ko>몇 개의 패널이 필요한지를 나타내는 정수.</ko>
+ * @example
+ * ```js
+ * flicking.on("needPanel", e => {
+ *     // You can use "fill" method in event to add panels easily.
+ *     e.fill("<div>New panel</div>");
+ * })
+ * ```
  */
 export interface NeedPanelEvent {
   type: string;
@@ -415,6 +425,7 @@ export interface NeedPanelEvent {
   direction: ValueOf<Direction> | null;
   axesEvent?: any;
   currentTarget: Flicking;
+  fill: (elements: ElementLike | ElementLike[]) => FlickingPanel[];
   range: {
     min: number;
     max: number;

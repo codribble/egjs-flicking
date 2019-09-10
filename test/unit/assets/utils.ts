@@ -1,4 +1,3 @@
-import Component from "@egjs/component";
 import Flicking from "../../../src/Flicking";
 import { merge, counter } from "../../../src/utils";
 import { EVENTS } from "../../../src/consts";
@@ -65,8 +64,12 @@ export function cleanup() {
   });
 }
 
+export function tick(time) {
+  (window as any).timer.tick(time);
+}
+
 declare var Simulator: any;
-export function simulate(el: HTMLElement, option?: object): Promise<void> {
+export function simulate(el: HTMLElement, option?: object, time: number = 15000): Promise<void> {
   let targetElement = el.querySelector(".eg-flick-viewport");
 
   if (!targetElement) {
@@ -81,20 +84,8 @@ export function simulate(el: HTMLElement, option?: object): Promise<void> {
       duration: 500,
       easing: "linear",
     }, option), resolve);
-  });
-}
 
-export function waitFor(delay: number): Promise<void> {
-  return new Promise(resolve => {
-    setTimeout(resolve, delay);
-  });
-}
-
-export function waitEvent(component: Component, eventName: string) {
-  return new Promise(resolve => {
-    component.once(eventName, e => {
-      resolve(e);
-    });
+    tick(time);
   });
 }
 
